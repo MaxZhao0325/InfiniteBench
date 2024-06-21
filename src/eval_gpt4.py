@@ -10,26 +10,80 @@ from eval_utils import (
 )
 import time
 from args import parse_args
+from dotenv import load_dotenv
+load_dotenv()
 
 api_key = ""
 org_id = ""
 
 
-client = OpenAI(
-    api_key=api_key,
-    organization=org_id,
-)
+# client = OpenAI(
+#     api_key=api_key,
+#     organization=org_id,
+# )
 
+client = OpenAI()
 
-def chat(messages: list):
-    completion = client.chat.completions.create(
-        model="gpt-4-1106-preview",
-        messages=messages,
+# assistant = client.beta.assistants.create(
+#   name="Assistant",
+#   instructions="You are a personal math tutor. Write and run code to answer math questions.",
+#   model="gpt-4o",
+# )
+
+assistant = client.beta.assistants.create(
+        name="Assistant_longbook_choice_eng",
+        model="gpt-4o",
     )
-    return completion.choices[0].message
+
+
+def chat(messages: list, input, op1, op2, op3, op4):   
+    instruction = messages[0]["content"]
+    new_messages = []
+    original_messages = messages[1]["content"]
+    while(original_messages):
+        cut_message=original_messages[:256000]
+        new_messages.append({"role": "user", "content": cut_message})
+        original_messages = original_messages[256000:]
+    # if(input):
+    #     input_string = "问题：{question}\n请尽量简短地回答。"
+    #     input_string = input_string.format(
+    #         question=input,
+    #     )
+    #     input_message = {"role": "user", "content": input_string}
+    #     new_messages.append(input_message)
+    if(input and op1 and op2 and op3 and op4):
+        input_string = "Question: {question}\n\nOnly one of the following options is correct, tell me the answer using one single letter (A, B, C, or D). Don't say anything else.\nA. {OPTION_A}\nB. {OPTION_B}\nC. {OPTION_C}\nD. {OPTION_D}"
+        input_string = input_string.format(
+            question=input,
+            OPTION_A=op1,
+            OPTION_B=op2,
+            OPTION_C=op3,
+            OPTION_D=op4,
+        )
+        input_message = {"role": "user", "content": input_string}
+        print("input", input_string)
+        new_messages.append(input_message)
+        
+ 
+    thread = client.beta.threads.create(messages=new_messages)
+    run = client.beta.threads.runs.create_and_poll(
+        thread_id=thread.id,
+        assistant_id=assistant.id,
+        instructions=instruction
+    )
+    
+    if run.status == 'completed': 
+        messages = client.beta.threads.messages.list(
+            thread_id=thread.id, order="desc"
+        )
+        # print(messages.data[0].content[0].text.value)
+        return messages.data[0].content[0].text.value
+    else:
+        return ""
 
 
 if __name__ == "__main__":
+
     args = parse_args()
     verbose = args.verbose
     task = args.task
@@ -39,7 +93,7 @@ if __name__ == "__main__":
     result_dir = Path(args.output_dir)
     result_dir.mkdir(exist_ok=True, parents=True)
 
-    output_path = result_dir / f"preds_{task}.jsonl"
+    output_path = result_dir / "assistant" / f"preds_{task}.jsonl"
     if output_path.exists():
         preds = list(iter_jsonl(output_path))
         start_idx = len(preds)
@@ -48,14 +102,14 @@ if __name__ == "__main__":
         start_idx = 0
         stop_idx = len(examples)
         preds = []
-    tokenizer = tiktoken.encoding_for_model("gpt-4")
+    # tokenizer = tiktoken.encoding_for_model("gpt-4")
 
     start_time = time.time()
     i = start_idx
-    while i < stop_idx:
+    while i < stop_idx and i<5:
         eg = examples[i]
         msgs, prompt = create_msgs(
-            tokenizer, eg, task, model_name="gpt4", data_dir=args.data_dir
+            eg, task, model_name="gpt4", data_dir=args.data_dir
         )
         if verbose:
             print(f"======== Example {i} =========")
@@ -66,11 +120,11 @@ if __name__ == "__main__":
             print("==============================")
         # Make prediction
         try:
-            response = chat(msgs)
+            response = chat(msgs, eg["input"], eg["options"][0], eg["options"][1], eg["options"][2], eg["options"][3])
             preds.append(
                 {
                     "id": i,
-                    "prediction": response.content,
+                    "prediction": response,
                     "ground_truth": get_answer(eg, task),
                 }
             )

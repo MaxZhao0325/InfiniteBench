@@ -61,12 +61,21 @@ MODEL_TO_PROMPT_TEMPLATE = {
 
 def iter_jsonl(fname, cnt=None):
     i = 0
-    with open(fname, "r") as fin:
+    with open(fname, "rb") as fin:
         for line in fin:
             if i == cnt:
                 break
-            yield json.loads(line)
-            i += 1
+            # yield json.loads(line)
+            # i += 1
+
+            try:
+                decoded_line = line.decode('utf-8')  # Try decoding the line
+                yield json.loads(decoded_line)  # Convert the JSON string to a dictionary
+                i += 1
+            except UnicodeDecodeError as e:
+                print(f"Encoding error in line {i}: {e}")
+                continue  # Skip the line with encoding issues
+
 
 
 def load_json(fname):
@@ -84,7 +93,7 @@ def dump_json(data, fname):
         json.dump(data, fout, indent=2, ensure_ascii=False)
 
 
-def load_data(data_name: str, data_dir: str = "../data/InfiniteBench/"):
+def load_data(data_name: str, data_dir: str = "../data/"):
     path = DATA_NAME_TO_PATH[data_name]
     fname = Path(data_dir, path)
     return list(iter_jsonl(fname))
@@ -114,7 +123,12 @@ def create_prompt(eg: dict, data_name: str, model_name: str, data_dir) -> str:
         if data_name == "math_calc":
             return eg["context"]
 
+    # get all tasks templates for gpt4
     templates = MODEL_TO_PROMPT_TEMPLATE[model_name]
+    # get the specific template for this task
+    # eg. "passkey": "There is an important info hidden inside a lot of irrelevant text. Find it and memorize them. 
+    # I will quiz you about the important information there.\n\n{context}\n\n{input}"
+    # String
     template = templates[data_name]
     # ================= Code tasks
     if data_name == "code_run":
@@ -171,12 +185,12 @@ def create_prompt(eg: dict, data_name: str, model_name: str, data_dir) -> str:
         #     raise ValueError("Invalid data_name")
         if data_name == "longbook_choice_eng":
             return template.format(
-                question=eg["input"],
+                #question=eg["input"],
                 context=book,
-                OPTION_A=eg["options"][0],
-                OPTION_B=eg["options"][1],
-                OPTION_C=eg["options"][2],
-                OPTION_D=eg["options"][3],
+                #OPTION_A=eg["options"][0],
+                #OPTION_B=eg["options"][1],
+                #OPTION_C=eg["options"][2],
+                #OPTION_D=eg["options"][3],
             )
         elif data_name == "longbook_qa_eng":
             return template.format(
@@ -189,7 +203,7 @@ def create_prompt(eg: dict, data_name: str, model_name: str, data_dir) -> str:
             )
         elif data_name == "longbook_qa_chn":
             return template.format(
-                question=eg["input"],
+                # question=eg["input"],
                 context=book,
             )
         else:
@@ -246,23 +260,17 @@ def get_answer(eg: dict, data_name: str):
 
 
 def create_msgs(
-    tokenizer, eg: dict, data_name: str, model_name: str, data_dir
+    eg: dict, data_name: str, model_name: str, data_dir
 ) -> tuple[list[dict], str]:
     """
     Only used by GPT-4.
     """
     prompt = create_prompt(eg, data_name, model_name, data_dir)
-    tokens = tokenizer.encode(prompt)
-    # - 1000 to have space for system message and other stuff.
-    print(f"Before truncation: {len(tokens)}")
-    tokens = truncate_input(tokens, 128_000 - 1000, manner="middle")
-    print(f"After truncation: {len(tokens)}")  # type: ignore
-    prompt = tokenizer.decode(tokens)
     if data_name == "math_calc":
         return [
             {"role": "system", "content": create_system_msg(data_name)},
             {"role": "user", "content": "1 + 2 - 4 - 10"},
-            {"role": "system", "content": "[1, 3, -1, -11]"},
+            {"role": "assistant", "content": "[1, 3, -1, -11]"},
             {"role": "user", "content": prompt},
         ], prompt
     else:

@@ -4,9 +4,10 @@ gpt4_templates = {
     "kv_retrieval": "Extract the value corresponding to the specified key in the JSON object below.\n\n{context}\n\n{input}",  # noqa
     # "longbook_sum_eng": "Summarize the book below:\n\n{context}",  # noqa
     "longbook_qa_eng": "Read the book below and answer a question.\n\n{context}\n\nQuestion: {question}\n\nBe very concise.",  # noqa
-    "longbook_choice_eng": "Read the book and answer the question.\n\n{context}\n\nQuestion: {question}\n\nOnly one of the following options is correct, tell me the answer using one single letter (A, B, C, or D). Don't say anything else.\nA. {OPTION_A}\nB. {OPTION_B}\nC. {OPTION_C}\nD. {OPTION_D}",  # noqa
+    # "longbook_choice_eng": "Read the book and answer the question.\n\n{context}\n\nQuestion: {question}\n\nOnly one of the following options is correct, tell me the answer using one single letter (A, B, C, or D). Don't say anything else.\nA. {OPTION_A}\nB. {OPTION_B}\nC. {OPTION_C}\nD. {OPTION_D}",  # noqa
+    "longbook_choice_eng": "Read the book and answer the question.\n\n{context}",
     "longbook_sum_eng": "Summarize the following book.\n\n{context}",  # noqa
-    "longbook_qa_chn": "请根据以下书籍回答我的问题。\n\n{context}\n\n问题：{question}\n请尽量简短地回答。",  # noqa
+    "longbook_qa_chn": "请根据以下书籍回答我的问题。\n\n{context}",  # noqa
     "math_find": "{prefix}\n\n{context}\n\n{input}",
     "math_calc": "Compute the intermediate values in the following long expression.\n\n{context}",  # noqa
     "code_run": "Following is a set of Python functions. There is a function called named {func}.\n\n{context}\n\nPlease give me the exact number of the return value of {func_call}. Be concise. Your response must end with the final returned value.",  # noqa
