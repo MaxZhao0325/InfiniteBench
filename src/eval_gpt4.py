@@ -36,7 +36,7 @@ assistant = client.beta.assistants.create(
     )
 
 
-def chat(messages: list, input, op1, op2, op3, op4):   
+def chat(messages: list, input='', op1='', op2='', op3='', op4=''):   
     instruction = messages[0]["content"]
     new_messages = []
     original_messages = messages[1]["content"]
@@ -64,19 +64,20 @@ def chat(messages: list, input, op1, op2, op3, op4):
         print("input", input_string)
         new_messages.append(input_message)
         
- 
     thread = client.beta.threads.create(messages=new_messages)
+    print(thread.id)
     run = client.beta.threads.runs.create_and_poll(
         thread_id=thread.id,
         assistant_id=assistant.id,
-        instructions=instruction
+        instructions=instruction,
+        max_prompt_tokens = 5000
     )
     
     if run.status == 'completed': 
         messages = client.beta.threads.messages.list(
             thread_id=thread.id, order="desc"
         )
-        # print(messages.data[0].content[0].text.value)
+        print(messages.data[0].content[0].text.value)
         return messages.data[0].content[0].text.value
     else:
         return ""
@@ -93,7 +94,7 @@ if __name__ == "__main__":
     result_dir = Path(args.output_dir)
     result_dir.mkdir(exist_ok=True, parents=True)
 
-    output_path = result_dir / "assistant" / f"preds_{task}.jsonl"
+    output_path = result_dir / "assistant" / f"preds_{task}2.jsonl"
     if output_path.exists():
         preds = list(iter_jsonl(output_path))
         start_idx = len(preds)
@@ -105,8 +106,9 @@ if __name__ == "__main__":
     # tokenizer = tiktoken.encoding_for_model("gpt-4")
 
     start_time = time.time()
-    i = start_idx
-    while i < stop_idx and i<5:
+    # i = start_idx
+    i=0
+    while i < stop_idx and i<1:
         eg = examples[i]
         msgs, prompt = create_msgs(
             eg, task, model_name="gpt4", data_dir=args.data_dir
@@ -120,7 +122,8 @@ if __name__ == "__main__":
             print("==============================")
         # Make prediction
         try:
-            response = chat(msgs, eg["input"], eg["options"][0], eg["options"][1], eg["options"][2], eg["options"][3])
+            # response = chat(msgs, eg["input"], eg["options"][0], eg["options"][1], eg["options"][2], eg["options"][3])
+            response = chat(msgs)
             preds.append(
                 {
                     "id": i,
